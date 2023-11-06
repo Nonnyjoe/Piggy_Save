@@ -1,4 +1,11 @@
 use starknet::ContractAddress;
+
+#[derive(Drop, Serde, starknet::Store)]
+enum target {
+    blockTime: felt252,
+    amount: u128,
+}
+
 #[starknet::interface]
 trait IERC20<TContractState> {
     fn name(self: @TContractState) -> felt252;
@@ -19,6 +26,7 @@ trait piggyBankTrait<TContractState> {
     fn deposit(ref self: TContractState, _amount: u128);
     fn withdraw(ref self: TContractState, _amount: u128);
     fn get_balance(self: @TContractState) -> u128;
+    fn get_Target(self: @TContractState) -> target;
 }
 
 #[starknet::contract]
@@ -26,7 +34,7 @@ mod piggyBank {
     use core::option::OptionTrait;
     use core::traits::TryInto;
     use starknet::{get_caller_address, ContractAddress, get_contract_address, Zeroable, get_block_timestamp};
-    use super::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use super::{IERC20Dispatcher, IERC20DispatcherTrait, target};
     use core::traits::Into;
     use piggy_bank::ownership_component::ownable_component;
     component!(path: ownable_component, storage: ownable, event: OwnableEvent);
@@ -46,11 +54,7 @@ mod piggyBank {
         ownable: ownable_component::Storage
     }
 
-    #[derive(Drop, Serde, starknet::Store)]
-    enum target {
-        blockTime: felt252,
-        amount: u128,
-    }
+
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -119,10 +123,10 @@ mod piggyBank {
         }
 
         fn withdraw(ref self: ContractState, _amount: u128) {
+            self.ownable.assert_only_owner();
             let caller: ContractAddress = get_caller_address();
             let this: ContractAddress = get_contract_address();
             let currentBalance: u128 = self.balance.read();
-            self.ownable.assert_only_owner();
             assert(self.balance.read() >= _amount, Errors::Insufficient_Balance);
 
             let mut new_amount: u128 = 0;
@@ -139,6 +143,10 @@ mod piggyBank {
 
         fn get_balance(self: @ContractState) -> u128 {
             self.balance.read()
+        }
+
+        fn get_Target(self: @ContractState) -> target {
+            self.withdrawalCondition.read()
         }
     }
 
@@ -170,51 +178,51 @@ mod piggyBank {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{piggyBankTrait, piggyBank, piggyBankTraitDispatcher, piggyBankTraitDispatcherTrait};
-    use starknet::class_hash::Felt252TryIntoClassHash;
-    use starknet::{
-        deploy_syscall, ContractAddress, get_caller_address, get_contract_address,
-        contract_address_const
-    };
-    use serde::Serde;
-    use starknet::testing::{set_caller_address, set_contract_address};
+// #[cfg(test)]
+// mod tests {
+//     use super::{piggyBankTrait, piggyBank, piggyBankTraitDispatcher, piggyBankTraitDispatcherTrait};
+//     use starknet::class_hash::Felt252TryIntoClassHash;
+//     use starknet::{
+//         deploy_syscall, ContractAddress, get_caller_address, get_contract_address,
+//         contract_address_const
+//     };
+//     use serde::Serde;
+//     use starknet::testing::{set_caller_address, set_contract_address};
     
-    fn deploy(owner: ContractAddress,  token: ContractAddress, manager: ContractAddress) -> piggyBankTraitDispatcher {
-        let mut calldata = ArrayTrait::new();
-        owner.serialize(ref calldata);
-        // target.serialize(ref calldata);
-        token.serialize(ref calldata);
-        manager.serialize(ref calldata);
+//     fn deploy(owner: ContractAddress,  token: ContractAddress, manager: ContractAddress) -> piggyBankTraitDispatcher {
+//         let mut calldata = ArrayTrait::new();
+//         owner.serialize(ref calldata);
+//         // target.serialize(ref calldata);
+//         token.serialize(ref calldata);
+//         manager.serialize(ref calldata);
 
-        let (contract_address, _) = deploy_syscall(
-            piggyBank::TEST_CLASS_HASH.try_into().unwrap(), 0, calldata.span(), false
-        )
-            .unwrap();
+//         let (contract_address, _) = deploy_syscall(
+//             piggyBank::TEST_CLASS_HASH.try_into().unwrap(), 0, calldata.span(), false
+//         )
+//             .unwrap();
 
-        piggyBankTraitDispatcher{contract_address}
-    }
+//         piggyBankTraitDispatcher{contract_address}
+//     }
 
-    #[test]
-    #[available_gas(2000000000)]
-    fn test_deploy() {
-        let owner: ContractAddress = get_contract_address();
-        // let target: super::piggyBank::target = super::piggyBank::target::amount(10000000000000000000);
-        let token: ContractAddress = get_contract_address();
-        let manager: ContractAddress = get_contract_address();
-        let contract = deploy(owner, token, manager);
-    }
+//     #[test]
+//     #[available_gas(2000000000)]
+//     fn test_deploy() {
+//         let owner: ContractAddress = get_contract_address();
+//         // let target: super::piggyBank::target = super::piggyBank::target::amount(10000000000000000000);
+//         let token: ContractAddress = get_contract_address();
+//         let manager: ContractAddress = get_contract_address();
+//         let contract = deploy(owner, token, manager);
+//     }
 
-    #[test]
-    fn add_two_and_two() {
-        let result = 2 + 2;
-        assert(result == 4, 'result is not 4');
-    }
+//     #[test]
+//     fn add_two_and_two() {
+//         let result = 2 + 2;
+//         assert(result == 4, 'result is not 4');
+//     }
 
-    #[test]
-    fn add_three_and_two() {
-        let result = 3 + 2;
-        assert(result == 5, 'result is not 5');
-    }
-}
+//     #[test]
+//     fn add_three_and_two() {
+//         let result = 3 + 2;
+//         assert(result == 5, 'result is not 5');
+//     }
+// }

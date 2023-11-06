@@ -11,4 +11,4 @@ dependencies = [
 [[package]]
 name = "snforge_std"
 version = "0.1.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.8.3#cb05cb81cae9451a91e42a03af09e0457284b4de"
+source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.9.1#da085bd11e1b151d0592f43917136560d9b70d37"
