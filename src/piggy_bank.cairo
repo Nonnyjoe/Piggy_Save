@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 
 #[derive(Drop, Serde, starknet::Store)]
 enum target {
-    blockTime: felt252,
+    blockTime: u128,
     amount: u128,
 }
 
@@ -12,10 +12,10 @@ trait IERC20<TContractState> {
     fn symbol(self: @TContractState) -> felt252;
     fn decimals(self: @TContractState) -> u8;
     fn total_supply(self: @TContractState) -> u256;
-    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+    fn balanceOf(self: @TContractState, account: ContractAddress) -> u256;
     fn allowance(self: @TContractState, owner: ContractAddress, spender: ContractAddress) -> u256;
     fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
-    fn transfer_from(
+    fn transferFrom(
         ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256
     ) -> bool;
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
@@ -27,6 +27,8 @@ trait piggyBankTrait<TContractState> {
     fn withdraw(ref self: TContractState, _amount: u128);
     fn get_balance(self: @TContractState) -> u128;
     fn get_Target(self: @TContractState) -> target;
+    fn get_owner(self: @TContractState) -> ContractAddress;
+    fn get_block_timestamp(self: @TContractState) -> u64;
 }
 
 #[starknet::contract]
@@ -54,7 +56,11 @@ mod piggyBank {
         ownable: ownable_component::Storage
     }
 
-
+    #[derive(Drop, Serde)]
+    enum targetOption {
+        targetTime,
+        targetAmount,
+    }
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -99,34 +105,32 @@ mod piggyBank {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, _owner: ContractAddress, _token: ContractAddress, _manager: ContractAddress) {
+    fn constructor(ref self: ContractState, _owner: ContractAddress, _token: ContractAddress, _manager: ContractAddress, target: targetOption, targetDetails: u128) {
         assert(!_owner.is_zero(), Errors::Address_Zero_Owner);
         assert(!_token.is_zero(), Errors::Address_Zero_Token);
-        self.ownable.owner.write(_owner);
-        self.withdrawalCondition.write(target::amount(10000000000000000000));
+        self.ownable.owner.write(_owner);    
         self.token.write(super::IERC20Dispatcher{contract_address: _token});
         self.manager.write(_manager);
+        match target {
+            targetOption::targetTime => self.withdrawalCondition.write(target::blockTime(targetDetails.into())),
+            targetOption::targetAmount => self.withdrawalCondition.write(target::amount(targetDetails)),
+        }
     }
 
     #[external(v0)]
     impl piggyBankImpl of super::piggyBankTrait<ContractState> {
         fn deposit(ref self: ContractState, _amount: u128) {
-            let caller: ContractAddress = get_caller_address();
-            let this: ContractAddress = get_contract_address();
-            let currentBalance: u128 = self.balance.read();
-
+            let (caller, this, currentBalance) = self.getImportantAddresses();
             self.balance.write(currentBalance + _amount);
 
-            self.token.read().transfer_from(caller, this, _amount.into());
+            self.token.read().transferFrom(caller, this, _amount.into());
 
             self.emit(Deposit { from: caller, Amount: _amount});
         }
 
         fn withdraw(ref self: ContractState, _amount: u128) {
             self.ownable.assert_only_owner();
-            let caller: ContractAddress = get_caller_address();
-            let this: ContractAddress = get_contract_address();
-            let currentBalance: u128 = self.balance.read();
+            let (caller, this, currentBalance) = self.getImportantAddresses();
             assert(self.balance.read() >= _amount, Errors::Insufficient_Balance);
 
             let mut new_amount: u128 = 0;
@@ -148,15 +152,23 @@ mod piggyBank {
         fn get_Target(self: @ContractState) -> target {
             self.withdrawalCondition.read()
         }
+
+        fn get_owner(self: @ContractState) -> ContractAddress {
+            self.ownable.owner()
+        }
+
+        fn get_block_timestamp(self: @ContractState) -> u64 {
+            starknet::get_block_timestamp()
+        }
     }
 
     #[generate_trait]
     impl Private of PrivateTrait {
-        fn verifyBlockTime(ref self: ContractState, blockTime: felt252, withdrawalAmount: u128) -> u128 {
-            if (get_block_timestamp() > blockTime.try_into().unwrap()) {
-                return self.processWithdrawalFee(withdrawalAmount);
-            } else {
+        fn verifyBlockTime(ref self: ContractState, blockTime: u128, withdrawalAmount: u128) -> u128 {
+            if (blockTime <= get_block_timestamp().into()) {
                 return withdrawalAmount;
+            } else {
+                return self.processWithdrawalFee(withdrawalAmount);
             }
         }
 
@@ -175,54 +187,12 @@ mod piggyBank {
             self.emit(PaidProcessingFee{from: get_caller_address(), Amount: withdrawalCharge});
             return withdrawalAmount - withdrawalCharge;
         }
+
+        fn getImportantAddresses(self: @ContractState) -> (ContractAddress, ContractAddress, u128) {
+            let caller: ContractAddress = get_caller_address();
+            let this: ContractAddress = get_contract_address();
+            let currentBalance: u128 = self.balance.read();
+            (caller, this, currentBalance)
+        }
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::{piggyBankTrait, piggyBank, piggyBankTraitDispatcher, piggyBankTraitDispatcherTrait};
-//     use starknet::class_hash::Felt252TryIntoClassHash;
-//     use starknet::{
-//         deploy_syscall, ContractAddress, get_caller_address, get_contract_address,
-//         contract_address_const
-//     };
-//     use serde::Serde;
-//     use starknet::testing::{set_caller_address, set_contract_address};
-    
-//     fn deploy(owner: ContractAddress,  token: ContractAddress, manager: ContractAddress) -> piggyBankTraitDispatcher {
-//         let mut calldata = ArrayTrait::new();
-//         owner.serialize(ref calldata);
-//         // target.serialize(ref calldata);
-//         token.serialize(ref calldata);
-//         manager.serialize(ref calldata);
-
-//         let (contract_address, _) = deploy_syscall(
-//             piggyBank::TEST_CLASS_HASH.try_into().unwrap(), 0, calldata.span(), false
-//         )
-//             .unwrap();
-
-//         piggyBankTraitDispatcher{contract_address}
-//     }
-
-//     #[test]
-//     #[available_gas(2000000000)]
-//     fn test_deploy() {
-//         let owner: ContractAddress = get_contract_address();
-//         // let target: super::piggyBank::target = super::piggyBank::target::amount(10000000000000000000);
-//         let token: ContractAddress = get_contract_address();
-//         let manager: ContractAddress = get_contract_address();
-//         let contract = deploy(owner, token, manager);
-//     }
-
-//     #[test]
-//     fn add_two_and_two() {
-//         let result = 2 + 2;
-//         assert(result == 4, 'result is not 4');
-//     }
-
-//     #[test]
-//     fn add_three_and_two() {
-//         let result = 3 + 2;
-//         assert(result == 5, 'result is not 5');
-//     }
-// }
