@@ -1,15 +1,14 @@
 use core::{traits::Into, debug::PrintTrait};
-// use array::ArrayTrait;
-// use result::ResultTrait;
-// use option::OptionTrait;
+use array::ArrayTrait;
+use result::ResultTrait;
+use option::OptionTrait;
 use traits::TryInto;
-use starknet::{ContractAddress, get_contract_address};
+use starknet::{ContractAddress, get_contract_address, ClassHash};
 use starknet::Felt252TryIntoContractAddress;
-use piggy_bank::piggy_bank::{IERC20Dispatcher, IERC20DispatcherTrait, };
-use piggy_bank::piggy_bank::piggyBank::targetOption;
+use piggy_bank::piggy_bank::{piggyBankTraitDispatcher, piggyBankTraitDispatcherTrait, IERC20Dispatcher, IERC20DispatcherTrait, };
 use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, stop_warp, env::var};
-use piggy_bank::piggy_bank::piggyBankTraitDispatcher;
-use piggy_bank::piggy_bank::piggyBankTraitDispatcherTrait;
+
+
 
 fn deploy_contract(name: felt252, owner: ContractAddress, token: ContractAddress, manager: ContractAddress, target: u8, targetDetails: u128) -> ContractAddress {
     let contract = declare(name);

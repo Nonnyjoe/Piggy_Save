@@ -1,14 +1,15 @@
 use starknet::{ContractAddress, ClassHash};
-use piggy_bank::piggy_bank::target;
+use piggy_bank::piggy_bank::piggyBank::targetOption;
 use array::ArrayTrait;
 
 #[starknet::interface]
 trait IPiggyBankFactory<TContractState> {
-    fn createPiggyBank(ref self: TContractState, savingsTarget: target) -> ContractAddress;
+    fn createPiggyBank(ref self: TContractState, savingsTarget: targetOption, targetDetails: u128) -> ContractAddress;
     fn updatePiggyBankHash(ref self: TContractState, newClasHash: ClassHash);
     fn getAllPiggyBank(self: @TContractState) -> Array<ContractAddress>;
     fn getPiggyBanksNumber(self: @TContractState) -> u128;
     fn getPiggyBankAddr(self: @TContractState, userAddress: ContractAddress) -> ContractAddress;
+    fn get_owner(self: @TContractState) -> ContractAddress;
 }
 
 #[starknet::contract]
@@ -19,7 +20,7 @@ use piggy_bank::ownership_component::IOwnable;
     use starknet::{ContractAddress, ClassHash, get_caller_address, Zeroable};
     use starknet::syscalls::deploy_syscall;
     use dict::Felt252DictTrait;
-    use super::target;
+    use super::targetOption;
     use piggy_bank::ownership_component::ownable_component;
     component!(path: ownable_component, storage: ownable, event: OwnableEvent);
 
@@ -75,12 +76,14 @@ use piggy_bank::ownership_component::IOwnable;
 
     #[external(v0)]
     impl piggyFactoryImpl of super::IPiggyBankFactory<ContractState> {
-        fn createPiggyBank(ref self: ContractState, savingsTarget: target) -> ContractAddress {
+        fn createPiggyBank(ref self: ContractState, savingsTarget: targetOption, targetDetails: u128) -> ContractAddress {
             // Contructor arguments
             let mut constructor_calldata = ArrayTrait::new();
             get_caller_address().serialize(ref constructor_calldata);
             self.TokenAddr.read().serialize(ref constructor_calldata);
             self.ownable.owner().serialize(ref constructor_calldata);
+            savingsTarget.serialize(ref constructor_calldata);
+            targetDetails.serialize(ref constructor_calldata);
 
             // Contract deployment
             let (deployed_address, _) = deploy_syscall(
@@ -121,6 +124,9 @@ use piggy_bank::ownership_component::IOwnable;
         fn getPiggyBankAddr(self: @ContractState, userAddress: ContractAddress) -> ContractAddress {
             assert(!userAddress.is_zero(), Errors::Address_Zero_Owner);
             self.piggyBankOwner.read(userAddress)
+        }
+        fn get_owner(self: @ContractState) -> ContractAddress {
+            self.ownable.owner()
         }
 
     }
