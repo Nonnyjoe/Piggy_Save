@@ -1,0 +1,15 @@
+starkli declare target/dev/piggy_bank_piggyBank.contract_class.json --rpc http://0.0.0.0:5050 --account ~/.starkli-wallets/deployer/account0_account.json --keystore ~/.starkli-wallets/deployer/account0_keystore.json 
+
+starkli declare target/dev/piggy_bank_piggyFactory.contract_class.json --rpc http://0.0.0.0:5050 --account ~/.starkli-wallets/deployer/account0_account.json --keystore ~/.starkli-wallets/deployer/account0_keystore.json
+
+piggyBankClassHash =0x07e6516e3ae69f081a4bea78d5f1743584f7028b5d2833515bb0147fa1c28b4b;
+
+piggyFactoryClassHash = 0x038acb18f67514e69c710b63a1d0b14e036d21ff6e9339f6caa328d41ac5b88d;
+
+starkli deploy 0x038acb18f67514e69c710b63a1d0b14e036d21ff6e9339f6caa328d41ac5b88d 0x07e6516e3ae69f081a4bea78d5f1743584f7028b5d2833515bb0147fa1c28b4b 0x049D36570D4e46f48e99674bd3fcc84644DdD6b96F7C741B1562B82f9e004dC7 --rpc http://0.0.0.0:5050 --account ~/.starkli-wallets/deployer/account0_account.json --keystore ~/.starkli-wallets/deployer/account0_keystore.json
+
+starkli call 0x00b4b2b0c35a3359c17bfb654adf62cc4ad2c387ac3cefa28dec82fd6e6c19c8 get_owner --rpc http://0.0.0.0:5050
+
+starkli invoke 0x00b4b2b0c35a3359c17bfb654adf62cc4ad2c387ac3cefa28dec82fd6e6c19c8 createPiggyBank 1 100000000000000000 --rpc http://0.0.0.0:5050 --account ~/.starkli-wallets/deployer/account0_account.json --keystore ~/.starkli-wallets/deployer/account0_keystore.json
+
+starkli call 0x00b4b2b0c35a3359c17bfb654adf62cc4ad2c387ac3cefa28dec82fd6e6c19c8 getAllPiggyBank --rpc http://0.0.0.0:5050
