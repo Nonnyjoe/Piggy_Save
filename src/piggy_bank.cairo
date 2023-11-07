@@ -26,9 +26,8 @@ trait piggyBankTrait<TContractState> {
     fn deposit(ref self: TContractState, _amount: u128);
     fn withdraw(ref self: TContractState, _amount: u128);
     fn get_balance(self: @TContractState) -> u128;
-    fn get_Target(self: @TContractState) -> target;
+    fn get_Target(self: @TContractState) -> (u128 , piggyBank::targetOption) ;
     fn get_owner(self: @TContractState) -> ContractAddress;
-    fn get_block_timestamp(self: @TContractState) -> u64;
 }
 
 #[starknet::contract]
@@ -149,17 +148,18 @@ mod piggyBank {
             self.balance.read()
         }
 
-        fn get_Target(self: @ContractState) -> target {
-            self.withdrawalCondition.read()
+        fn get_Target(self: @ContractState) -> (u128 , targetOption) {
+            let condition = self.withdrawalCondition.read();
+            match condition {
+                target::blockTime(x) => {return (x, targetOption::targetTime);},
+                target::amount(x) => {return (x, targetOption::targetAmount);},                
+            }
         }
 
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.ownable.owner()
         }
 
-        fn get_block_timestamp(self: @ContractState) -> u64 {
-            starknet::get_block_timestamp()
-        }
     }
 
     #[generate_trait]
