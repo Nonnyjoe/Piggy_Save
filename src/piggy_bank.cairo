@@ -138,7 +138,7 @@ mod piggyBank {
                 target::blockTime(x) => new_amount = self.verifyBlockTime(x, _amount),
                 target::amount(x) => new_amount = self.verifyTargetAmount(x, _amount),
             };
-            
+
             self.balance.write(currentBalance - _amount);
             self.token.read().transfer(caller, new_amount.into());
 

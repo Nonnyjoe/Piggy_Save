@@ -91,7 +91,6 @@ use piggy_bank::ownership_component::IOwnable;
                 self.piggyBankHash.read(), 0, constructor_calldata.span(), false
             )
                 .expect('failed to deploy counter');
-                
             self.totalPiggyBanksNo.write(self.totalPiggyBanksNo.read() + 1);
             self.AllBanksRecords.write(self.totalPiggyBanksNo.read(), deployed_address);
             self.piggyBankOwner.write(get_caller_address(), deployed_address);
