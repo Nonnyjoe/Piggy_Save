@@ -28,6 +28,7 @@ trait piggyBankTrait<TContractState> {
     fn get_balance(self: @TContractState) -> u128;
     fn get_Target(self: @TContractState) -> (u128 , piggyBank::targetOption) ;
     fn get_owner(self: @TContractState) -> ContractAddress;
+    fn viewTarget(self: @TContractState) -> target;
 }
 
 #[starknet::contract]
@@ -158,6 +159,10 @@ mod piggyBank {
 
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.ownable.owner()
+        }
+
+        fn viewTarget(self: @ContractState) -> target {
+            self.withdrawalCondition.read()
         }
 
     }

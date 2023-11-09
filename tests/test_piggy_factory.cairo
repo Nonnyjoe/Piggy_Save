@@ -2,8 +2,6 @@ use core::option::OptionTrait;
 use core::{traits::Into, debug::PrintTrait};
 use array::ArrayTrait;
 use serde::Serde;
-// use result::ResultTrait;
-// use option::OptionTrait;
 use traits::TryInto;
 use starknet::{ContractAddress, get_contract_address, ClassHash};
 use starknet::Felt252TryIntoContractAddress;
@@ -22,6 +20,7 @@ fn deploy_contract(name: felt252, owner: ContractAddress) -> ContractAddress {
     let mut calldata = ArrayTrait::new();
     piggy_class_hash.serialize(ref calldata);
     EthToken.serialize(ref calldata);
+    owner.serialize(ref calldata);
 
     // Precalculate the address to obtain the contract address before the constructor call (deploy) itself
     let contract_address = contract.precalculate_address(@calldata);

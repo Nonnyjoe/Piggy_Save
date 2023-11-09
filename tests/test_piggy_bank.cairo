@@ -6,15 +6,35 @@ use traits::TryInto;
 use starknet::{ContractAddress, get_contract_address, ClassHash};
 use starknet::Felt252TryIntoContractAddress;
 use piggy_bank::piggy_bank::{piggyBankTraitDispatcher, piggyBankTraitDispatcherTrait, IERC20Dispatcher, IERC20DispatcherTrait, };
-use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, stop_warp, env::var};
+use snforge_std::{declare, ContractClassTrait, start_prank, stop_prank, start_warp, stop_warp, env::var, ContractClass, get_class_hash};
 
+mod testStorage {
+    const contract_address: felt252 = 0;
+}
+
+
+fn deploy_contract_forked(name: felt252, owner: ContractAddress, token: ContractAddress, manager: ContractAddress, target: u8, targetDetails: u128) -> ContractAddress {
+    let mut calldata = ArrayTrait::new();
+    owner.serialize(ref calldata);
+    token.serialize(ref calldata);
+    manager.serialize(ref calldata);
+    target.serialize(ref calldata);
+    targetDetails.serialize(ref calldata);
+    let deployed_contract_address: ContractAddress = 0x042f0284511fb30a93defacad0c7d2a8968bfe0700fb54785337753e3b12720a.try_into().unwrap();
+    // Precalculate the address to obtain the contract address before the constructor call (deploy) itself
+    let contract_address = ContractClass{class_hash: get_class_hash(deployed_contract_address)}.precalculate_address(@calldata);
+    start_prank(contract_address, owner.try_into().unwrap());
+    let deployedContract = ContractClass{class_hash: get_class_hash(deployed_contract_address)}.deploy(@calldata).unwrap();
+    stop_prank(contract_address);
+
+    deployedContract
+}
 
 
 fn deploy_contract(name: felt252, owner: ContractAddress, token: ContractAddress, manager: ContractAddress, target: u8, targetDetails: u128) -> ContractAddress {
     let contract = declare(name);
     let mut calldata = ArrayTrait::new();
     owner.serialize(ref calldata);
-    // target.serialize(ref calldata);
     token.serialize(ref calldata);
     manager.serialize(ref calldata);
     target.serialize(ref calldata);
@@ -23,7 +43,6 @@ fn deploy_contract(name: felt252, owner: ContractAddress, token: ContractAddress
     // Precalculate the address to obtain the contract address before the constructor call (deploy) itself
     let contract_address = contract.precalculate_address(@calldata);
 
-    // Change the caller address to 123 before the call to contract.deploy
     start_prank(contract_address, owner.try_into().unwrap());
     let deployedContract = contract.deploy(@calldata).unwrap();
     stop_prank(contract_address);
@@ -69,7 +88,7 @@ fn test_expected_owner() {
 fn test_deposit_into_Account() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetSavings = 10_000000000000000000;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 1, targetSavings);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 1, targetSavings);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 1000000000000000000;
@@ -94,7 +113,7 @@ fn test_deposit_into_Account() {
 fn test_withdraw_without_meeting_target_amount() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetSavings = 10_000000000000000000;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 1, targetSavings);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 1, targetSavings);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 1000000000000000000;
@@ -125,7 +144,7 @@ fn test_withdraw_without_meeting_target_amount() {
 fn test_withdraw_after_meeting_target_amount() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetSavings = 10_000000000000000000;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 1, targetSavings);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 1, targetSavings);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 10000000000000000000;
@@ -159,7 +178,7 @@ fn test_withdraw_after_meeting_target_amount() {
 fn test_UnAuthorized_user_withdrawal_Attempt() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetSavings = 10_000000000000000000;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 1, targetSavings);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 1, targetSavings);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 10000000000000000000;
@@ -195,7 +214,7 @@ fn test_UnAuthorized_user_withdrawal_Attempt() {
 fn test_withdraw_after_meeting_target_time() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetTime = 1000;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 0, targetTime);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 0, targetTime);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 10000000000000000000;
@@ -229,7 +248,7 @@ fn test_withdraw_after_meeting_target_time() {
 fn test_withdraw_without_meeting_target_time() {
     let (caller, EthToken, this) = get_important_addresses();
     let targetTime = 2000170827;
-    let contract_address = deploy_contract('piggyBank', caller, EthToken, this, 0, targetTime);
+    let contract_address = deploy_contract_forked('piggyBank', caller, EthToken, this, 0, targetTime);
     let piggy_dispatcher = piggyBankTraitDispatcher { contract_address };
     let eth_dispatcher = IERC20Dispatcher{ contract_address: EthToken};
     let depositAmount: u128 = 10000000000000000000;

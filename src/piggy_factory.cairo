@@ -10,6 +10,7 @@ trait IPiggyBankFactory<TContractState> {
     fn getPiggyBanksNumber(self: @TContractState) -> u128;
     fn getPiggyBankAddr(self: @TContractState, userAddress: ContractAddress) -> ContractAddress;
     fn get_owner(self: @TContractState) -> ContractAddress;
+    fn get_childClassHash(self: @TContractState) -> ClassHash;
 }
 
 #[starknet::contract]
@@ -68,9 +69,9 @@ use piggy_bank::ownership_component::IOwnable;
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, piggyBankClassHash: ClassHash, tokenAddr: ContractAddress) {
+    fn constructor(ref self: ContractState, piggyBankClassHash: ClassHash, tokenAddr: ContractAddress,  _owner: ContractAddress) {
         self.piggyBankHash.write(piggyBankClassHash);
-        self.ownable.owner.write(get_caller_address());
+        self.ownable.owner.write(_owner);
         self.TokenAddr.write(tokenAddr);
     }
 
@@ -127,6 +128,10 @@ use piggy_bank::ownership_component::IOwnable;
         }
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.ownable.owner()
+        }
+        
+        fn get_childClassHash(self: @ContractState) -> ClassHash {
+            self.piggyBankHash.read()
         }
 
     }
